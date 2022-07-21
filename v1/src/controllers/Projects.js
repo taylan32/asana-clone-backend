@@ -1,18 +1,19 @@
 const { insert, list, modify, remove} = require("../services/Projects");
 const httpStatus = require("http-status");
+const CustomError = require("../errors/CustomError")
 
-const create = (req, res) => {
+const create = (req, res, next) => {
   req.body.userId = req.user;
   insert(req.body)
     .then((response) => {
       res.status(httpStatus.CREATED).send(response);
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).send(error);
+      next(CustomError(error.message))
     });
 };
 
-const index = (req, res) => {
+const index = (req, res, next) => {
   list()
     .then((response) => {
       res.status(httpStatus.OK).json({
@@ -22,55 +23,42 @@ const index = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).send(error);
+      next(CustomError(error.message))
     });
 };
 
-const update = (req, res) => {
-  if(!req.params?.id) {
-    res.status(httpStatus.BAD_REQUEST).json({
-      success:false,
-      message:"Project id missing"
-    })
+const update = (req, res, next) => {
+  if(!req.params.id) {
+    return next(CustomError("Id missing", httpStatus.OK))
   }
   modify(req.body, req.params?.id).then((updatedProject) => {
+    if(!updatedProject) {
+      return next(CustomError("Project not found", httpStatus.NOT_FOUND))
+    }
     res.status(httpStatus.OK).json({
       success:true,
       message:"Updated",
       data:updatedProject
     })
   }).catch(error => {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      success:false,
-      message:"An error occured while update operation.",
-      error:error
-    })
+    next(CustomError(error.message))
   })
 }
 
-const deleteProject = (req, res) => {
-  if(!req.params?.id) {
-    res.status(httpStatus.BAD_REQUEST).json({
-      success:false,
-      message:"Project id missing"
-    })
+const deleteProject = (req, res, next) => {
+  if(!req.params.id) {
+    return next(CustomError("Id missing", httpStatus.OK))
   }
   remove(req.params?.id).then((deletedProject) => {
     if(!deletedProject) {
-      return res.status(httpStatus.NOT_FOUND).json({
-        success:false,
-        message:"Project not found"
-      })
+      return next(CustomError("Project not found", httpStatus.NOT_FOUND))
     }
     res.status(httpStatus.OK).json({
       success:true,
       message:"Project deleted"
     })
   }).catch(error => {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      success:false,
-      message:"An error occured while delete operation.",
-    })
+    next(CustomError(error.message))
   })
 }
 

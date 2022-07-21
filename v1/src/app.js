@@ -7,6 +7,7 @@ const loaders = require("./loaders");
 const cors = require("cors");
 const events = require("./scripts/events")
 const path = require("path")
+const errorHandler =  require("./middlewares/errorHandler")
 
 config();
 loaders();
@@ -27,4 +28,6 @@ app.use(fileUpload())
 app.listen(process.env.APP_PORT, () => {
   console.log("Server running");
   app.use("/api", routers);
+
+  app.use(errorHandler)
 });
