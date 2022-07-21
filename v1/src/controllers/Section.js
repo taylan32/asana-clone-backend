@@ -1,13 +1,10 @@
 const httpStatus = require("http-status")
 const { list, insert, modify, remove } = require("../services/Section")
+const CustomError = require("../errors/CustomError")
 
-
-const index = (req, res) => {
+const index = (req, res, next) => {
     if(!req.params?.projectId) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-            success:false,
-            message:"Project info missing"
-        })
+        return next(CustomError("project id missing", httpStatus.BAD_REQUEST))
     }
     list({projectId:req.params.projectId}).then((sections) => {
         res.status(httpStatus.OK).json({
@@ -16,14 +13,10 @@ const index = (req, res) => {
             data:sections
         })
     }).catch(error => {
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            success:false,
-            message:"Unexpected error occured.",
-            error:error
-        })
+        next(CustomError(error.message))
     })
 }
-const create = (req, res) => {
+const create = (req, res, next) => {
     req.body.userId = req.user
     insert(req.body).then((response) => {
         return res.status(httpStatus.CREATED).json({
@@ -32,49 +25,36 @@ const create = (req, res) => {
             data:response
         })
     }).catch(error => {
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            success:false,
-            message:"Unexpected error occured.",
-            error:error
-        })
+        next(CustomError(error.message))
     })
 }
 
-const update = (req, res) => {
+const update = (req, res, next) => {
     if(!req.params?.id) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-            success:false,
-            message:"Session id missing"
-        })
+        return next(CustomError("section id missing", httpStatus.BAD_REQUEST))
     }
     modify(req.body, req.params?.id).then((updatedSection) => {
+        if(!updatedSection) {
+            return next(CustomError("Section not found", httpStatus.NOT_FOUND))
+        }
         res.status(httpStatus.OK).json({
             success:true,
             message:"Section updated",
             data:updatedSection
         })
     }).catch(error => {
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            success:false,
-            message:"Unexpected error occured.",
-            error:error
-        })
+        next(CustomError(error.message))
     })
 }
 
-const deleteSection = (req, res) => {
+const deleteSection = (req, res, next) => {
     if(!req.params?.id) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-            success:false,
-            message:"Section id missing"
-        })
+        return next(CustomError("section id missing", httpStatus.BAD_REQUEST))
+
     }
     remove(req.params?.id).then((deletedSection) => {
         if(!deletedSection) {
-            return res.status(httpStatus.NOT_FOUND).json({
-                success:false,
-                message:"Section not found"
-            })
+            return next(CustomError("Section not found", httpStatus.NOT_FOUND))
         }
         return res.status(httpStatus.OK).json({
             success:true,
@@ -82,11 +62,7 @@ const deleteSection = (req, res) => {
             data:deletedSection
         })
     }).catch(error => {
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            success:false,
-            message:"Unexpected error occured.",
-            error:error
-        })
+        next(CustomError(error.message))
     })
 }
 

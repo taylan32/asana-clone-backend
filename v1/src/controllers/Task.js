@@ -1,15 +1,16 @@
 const httpStatus = require("http-status");
 const { list, insert, modify, remove, findOne } = require("../services/Task");
+const CustomError = require("../errors/CustomError")
 
-const index = (req, res) => {
+const index = (req, res, next) => {
   if (!req.params?.projectId) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "Project info missing",
-    });
+    return next(CustomError("project id missing", httpStatus.BAD_REQUEST))
   }
   list({ projectId: req.params.projectId })
     .then((sections) => {
+      if(!sections) {
+        return next(CustomError("Section not found", httpStatus.NOT_FOUND))
+      }
       res.status(httpStatus.OK).json({
         success: true,
         message: "Task listed",
@@ -17,11 +18,7 @@ const index = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Unexpected error occured.",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 const create = (req, res) => {
@@ -35,28 +32,18 @@ const create = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Unexpected error occured.",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
 const update = (req, res) => {
   if (!req.params?.id) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "Task id missing",
-    });
+    return next(CustomError("task id missing", httpStatus.BAD_REQUEST))
   }
   modify(req.body, req.params?.id)
     .then((updatedTask) => {
       if (!updatedTask) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Task not found",
-        });
+        return next(CustomError("Task not found", httpStatus.NOT_FOUND))
       }
       res.status(httpStatus.OK).json({
         success: true,
@@ -65,28 +52,18 @@ const update = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Unexpected error occured.",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
 const deleteTask = (req, res) => {
   if (!req.params?.id) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "Task id missing",
-    });
+    return next(CustomError("task id missing", httpStatus.BAD_REQUEST))
   }
   remove(req.params?.id)
     .then((deletedTask) => {
       if (!deletedTask) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Task not found",
-        });
+        return next(CustomError("Task not found", httpStatus.NOT_FOUND))
       }
       return res.status(httpStatus.OK).json({
         success: true,
@@ -95,28 +72,18 @@ const deleteTask = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Unexpected error occured.",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
 const addComment = (req, res) => {
   if (!req.params.id) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "Task id missing",
-    });
+    return next(CustomError("task id missing", httpStatus.BAD_REQUEST))
   }
   findOne({ _id: req.params.id })
     .then((task) => {
       if (!task) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Task not found",
-        });
+        return next(CustomError("Task not found", httpStatus.NOT_FOUND))
       }
       task.comments.push({
         ...req.body,
@@ -132,11 +99,7 @@ const addComment = (req, res) => {
       });
     })
     .catch((error) => {
-      return res.status.json({
-        success: false,
-        essage: "Unexpected error occured",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
@@ -144,10 +107,7 @@ const deleteComment = (req, res) => {
   findOne({ _id: req.params.id })
     .then((task) => {
       if (!task) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Task not found",
-        });
+        return next(CustomError("Task not found", httpStatus.NOT_FOUND))
       }
       task.comments = task.comments.filter(
         (c) => c._id != req.params.commentId
@@ -161,30 +121,20 @@ const deleteComment = (req, res) => {
       });
     })
     .catch((error) => {
-      return res.status.json({
-        success: false,
-        essage: "Unexpected error occured",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
 const addSubTask = (req, res) => {
   // check if task exists
   if (!req.params?.id) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "Task id missing",
-    });
+    return next(CustomError("task id missing", httpStatus.BAD_REQUEST))
   }
   // get the task
   findOne({ _id: req.params.id })
     .then((task) => {
       if (!task) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Task not found",
-        });
+        return next(CustomError("Task not found", httpStatus.NOT_FOUND))
       }
       // create sub-task
       insert({ ...req.body, userId: req.user?._id }).then((subTask) => {
@@ -201,27 +151,17 @@ const addSubTask = (req, res) => {
       });
     })
     .catch((error) => {
-      return res.status.json({
-        success: false,
-        essage: "Unexpected error occured",
-        error: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
 const fetchTask = (req, res) => {
     findOne({_id:req.params.id}, true).then((task) => {
         if (!req.params?.id) {
-            return res.status(httpStatus.BAD_REQUEST).json({
-              success: false,
-              message: "Task id missing",
-            });
+          return next(CustomError("task id missing", httpStatus.BAD_REQUEST))
           }
           if(!task) {
-            return res.status(httpStatus.NOT_FOUND).json({
-              success:false,
-              message:"Task not found"
-            })
+            return next(CustomError("Task not found", httpStatus.NOT_FOUND))
           }
         return res.status(httpStatus.OK).json({
             success:true,
@@ -229,11 +169,7 @@ const fetchTask = (req, res) => {
             data:task
         })
     }).catch((error) => {
-        return res.status.json({
-            success: false,
-            essage: "Unexpected error occured",
-            error: error,
-          });
+      next(CustomError(error.message))
     })
 }
 

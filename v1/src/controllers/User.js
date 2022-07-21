@@ -10,8 +10,9 @@ const crypto = require("crypto");
 const uuid = require("uuid");
 const eventEmitter = require("../scripts/events/eventEmitter");
 const path = require("path")
+const CustomError = require("../errors/CustomError")
 
-const create = async (req, res) => {
+const create =  (req, res, next) => {
   req.body.password = passwordToHash(req.body.password);
   insert(req.body)
     .then((response) => {
@@ -22,14 +23,11 @@ const create = async (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
-const index = async (req, res) => {
+const index =  (req, res, next) => {
   list()
     .then((response) => {
       res.status(httpStatus.OK).json({
@@ -39,22 +37,16 @@ const index = async (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
-const login = async (req, res) => {
+const login =  (req, res, next) => {
   req.body.password = passwordToHash(req.body.password);
   loginUser(req.body)
     .then((user) => {
       if (!user) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "Email or password is incorrect",
-        });
+        return next(CustomError("Email or password is incorrect", httpStatus.BAD_REQUEST))
       }
       user = {
         ...user.toObject(),
@@ -71,14 +63,11 @@ const login = async (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: error,
-      });
+      next(CustomError(error.message))
     });
 };
 
-const projectList = (req, res) => {
+const projectList = (req, res, next) => {
   projectService
     .list({ userId: req.user?._id })
     .then((projects) => {
@@ -89,14 +78,11 @@ const projectList = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An unexpected error occured.",
-      });
+      next(CustomError(error.message))
     });
 };
 
-const resetPassword = (req, res) => {
+const resetPassword = (req, res, next) => {
   //const newPassword = uuid.v4()?.split("-")[0] || `usr-${new Data().getTime()}`
   const newPassword = crypto.randomBytes(4).toString("hex");
   modify(
@@ -105,10 +91,7 @@ const resetPassword = (req, res) => {
   )
     .then((updatedUser) => {
       if (!updatedUser) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "User not found",
-        });
+        return next(CustomError("User not found", httpStatus.NOT_FOUND))
       }
       eventEmitter.emit("send_mail", {
         to: updatedUser.email,
@@ -121,16 +104,16 @@ const resetPassword = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An unexpected error occured.",
-      });
+      next(CustomError(error.message))
     });
 };
 
-const update = (req, res) => {
+const update = (req, res, next) => {
   modify({ _id: req.user?._id }, req.body)
     .then((updatedUser) => {
+      if (!updatedUser) {
+        return next(CustomError("User not found", httpStatus.NOT_FOUND))
+      }
       res.status(httpStatus.OK).json({
         success: true,
         message: "User updated",
@@ -138,27 +121,18 @@ const update = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An unexpected error occured.",
-      });
+      next(CustomError(error.message))
     });
 };
 
-const deleteUser = (req, res) => {
+const deleteUser = (req, res, next) => {
   if (!req.params?.id) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success: false,
-      message: "User id missing",
-    });
+    return next(CustomError("id missing", httpStatus.BAD_REQUEST))
   }
   remove(req.params?.id)
     .then((deletedUser) => {
       if (!deletedUser) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "User not found",
-        });
+        return next(CustomError("User not found", httpStatus.NOT_FOUND))
       }
       return res.status(httpStatus.OK).json({
         success: true,
@@ -167,22 +141,16 @@ const deleteUser = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An unexpected error occured.",
-      });
+      next(CustomError(error.message))
     });
 };
 
-const changePassword = (req, res) => {
+const changePassword = (req, res, next) => {
   req.body.password = passwordToHash(req.body.password);
   modify({ _id: req.user?._id }, req.body)
     .then((updatedUser) => {
       if (!updatedUser) {
-        return res.status(httpStatus.NOT_FOUND).json({
-          success: false,
-          message: "User not found",
-        });
+        return next(CustomError("User not found", httpStatus.NOT_FOUND))
       }
       return res.status(httpStatus.OK).json({
         success: true,
@@ -191,20 +159,14 @@ const changePassword = (req, res) => {
       });
     })
     .catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An unexpected error occured.",
-      });
+      next(CustomError(error.message))
     });
 };
 
-const updateProfileImage = (req, res) => {
+const updateProfileImage = (req, res, next) => {
   // check image
   if(!req.files?.profileImage) {
-    return res.status(httpStatus.BAD_REQUEST).json({
-      success:false,
-      message:"You did not uplaod any file"
-    })
+    return next(CustomError("No files uploaded", httpStatus.BAD_REQUEST))
   }
 
   // upload image
@@ -230,10 +192,7 @@ const updateProfileImage = (req, res) => {
         data:updatedUser
       })
     }).catch((error) => {
-      res.status(httpStatus.INTERNAL_SERVE_ERROR).json({
-        success:false,
-        message:"The file upload was successful but an error occured while saving"
-      })
+      next(CustomError(error.message))
     })
   })
 }
