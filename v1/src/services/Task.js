@@ -26,7 +26,7 @@ const findOne = (where, expand) => {
       path: "userId",
       select: "fullName email profileImage",
     })
-    .populate({
+    .populate({ 
       path: "projectId",
       select: "name",
     })
