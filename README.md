@@ -9,7 +9,7 @@
 - Mainly focused on __project achitecture__ and __folder structure__  so some routes are not fully implemented 
 
 # Er diagram 
-![alt text](https://github.com/taylan32/asana-backend/blob/main/screenshots/er_diagram.png?raw=true)
+![alt text](https://raw.githubusercontent.com/taylan32/asana-clone-backend/main/er_diagram.png)
 
 ### `npm install`
 Installs required packages
